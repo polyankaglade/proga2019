@@ -23,6 +23,15 @@ app = Flask(__name__)
 BROWSER = 'from_browser'
 
 
+def parse_data(data_string):
+    data = pd.read_csv(StringIO(data_string), delimiter=',')
+    if data.isnull().values.any():
+        raise ValueError('your data contains empty values')
+    if (data.dtypes != float).any():
+        raise ValueError('your data contains non-numeric values')
+    return data
+
+
 @app.errorhandler(Exception)
 def handle_error(e):
     if isinstance(e, HTTPException):
@@ -35,7 +44,7 @@ def handle_error(e):
             }})
         response.content_type = "application/json"
     else:
-        response = {"error": e.args[0]}
+        response = jsonify({"error": e.args[0]})
 
     return response
 
@@ -48,6 +57,8 @@ def instructions():
         return jsonify({"instructions": "to make DB go to /create_db"})
 
 
+# мне показалось, что лучше дать возможность осознанно создать БД
+# чем делать что-то втихую автоматически при запуске приложения
 @app.route('/create_db')
 def create():
     try:
@@ -72,13 +83,13 @@ def train():
         args = request.get_json()
 
     try:  # read data
-        data = pd.read_csv(StringIO(args['data']), delimiter=',')
+        data = parse_data(args['data'])
         target = str(args['target'])
         n_folds = int(args['n_folds'])
         fit_intercept = bool(args['fit_intercept'])
         l2_coef = list(args['l2_coef'])
     except Exception as exc:
-        abort(400, f"Error: {exc}")
+        abort(400, f"ValueError: {exc}")
         return
 
     try:  # train model and add results to DB
@@ -109,7 +120,9 @@ def get_model(model_id):
         return
     if len(request.args) > 0:
         if request.args['source'] == BROWSER:
-            return render_template('predict.html', model_id=model_id), 200
+            return render_template('predict.html', model_id=model_id,
+                                   params=found.model,
+                                   scores=found.cv_results), 200
     else:
         return jsonify({"model": found.model, "cv_results": found.cv_results})
 
@@ -121,7 +134,7 @@ def predict(model_id):
     else:
         args = request.get_json()
     try:
-        data = pd.read_csv(StringIO(args['data']), delimiter=',')
+        data = parse_data(args['data'])
 
         found = db.get_model(model_id)
 

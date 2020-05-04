@@ -1,5 +1,6 @@
+import numpy as np
 from model import CustomRidgeCV
-from sklearn.linear_model import LinearRegression
+from sklearn.utils.extmath import safe_sparse_dot
 
 
 class Train:
@@ -16,7 +17,7 @@ class Train:
 
         model = CustomRidgeCV(alphas=self.l2_coef, fit_intercept=self.fit_intercept,
                               cv=self.n_folds, store_cv_values=True)
-        model.fit(x, y)
+        model.fit(x.values, y.values)
 
         self.intercept = model.intercept_
         self.coef = {var: coef for var, coef in zip(x.columns.values, model.coef_)}
@@ -37,21 +38,17 @@ class Train:
 class Predict:
 
     def __init__(self, found, data):
-
         self.model = found.model
         self.intercept = self.model['intercept']
         self.coef = self.model['coef']
         self.data = data
 
-        self._results = list()
+        sorted_model = np.array([self.coef[f] for f in data.columns.values])
 
-        for _, predict in self.data.iterrows():
-            result = 0
-            for feature, value in zip(predict.index.values, predict.values.tolist()):
-                result += value * self.coef[feature]
-            result += self.intercept
+        result = safe_sparse_dot(data, sorted_model, dense_output=True) \
+            + self.intercept
 
-            self._results.append(result)
+        self._results = result.tolist()
 
     @property
     def results_(self):

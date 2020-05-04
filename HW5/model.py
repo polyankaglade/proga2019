@@ -7,18 +7,22 @@ from sklearn.linear_model._ridge import GridSearchCV, Ridge, LinearModel
 class CustomRidgeCV(LinearModel):
     """
     Custom RidgeCV made from _BaseRidgeCV.
-    I added storing of CV values for K-fold cross validation (in custom_cv_values_)
+    I left only K-fold CV option and added storing of CV values for it,
+    and changed some of default parameters.
     Everything else is the same as in regular RidgeCV.
     """
 
     def __init__(self, alphas=(0.1, 1.0, 10.0),
-                 fit_intercept=True, normalize=False, scoring=None,
-                 cv=1, gcv_mode=None,
+                 fit_intercept=True, normalize=False,
+                 scoring='neg_mean_squared_error', cv=3,  # изменено
+                 gcv_mode=None,
                  store_cv_values=True):  # изменено
         self.alphas = np.asarray(alphas)
         self.fit_intercept = fit_intercept
         self.normalize = normalize
+
         self.scoring = scoring
+
         self.cv = cv
         self.gcv_mode = gcv_mode
         self.store_cv_values = store_cv_values
@@ -74,7 +78,8 @@ class CustomRidgeCV(LinearModel):
                                     normalize=self.normalize,
                                     solver=solver),
                               parameters, scoring=self.scoring, cv=self.cv,
-                              return_train_score=True)  # изменено
+                              return_train_score=False, error_score=0)  # изменено
+
             gs.fit(X, y, sample_weight=sample_weight)
             estimator = gs.best_estimator_
             self.alpha_ = gs.best_estimator_.alpha
@@ -83,13 +88,13 @@ class CustomRidgeCV(LinearModel):
             if self.store_cv_values:
                 cv_results = pd.DataFrame(gs.cv_results_)
 
-                def get_scores_for_param(res):
-                    scores = [res[f'split{n}_test_score'] for n in range(2)]
+                def get_scores_for_param(res, n_fold):
+                    scores = [res[f'split{n}_test_score'] for n in range(n_fold)]
                     return {"param_value": res['param_alpha'],
                             "scores": scores,
-                            "mean_mse": sum(scores) / len(scores)}
+                            "mean_mse": abs(sum(scores) / len(scores))}
 
-                self.cv_values_ = [get_scores_for_param(res) for _, res in cv_results.iterrows()]
+                self.cv_values_ = [get_scores_for_param(res, self.cv) for _, res in cv_results.iterrows()]
 
         self.coef_ = estimator.coef_
         self.intercept_ = estimator.intercept_

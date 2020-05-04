@@ -28,6 +28,15 @@ https://www.tooplate.com/view/2117-infinite-loop
         <div class="text-center tm-hero-text-container">
         <div class="tm-hero-text-container-inner">
             <br><br><br><h1>Model: {{model_id}}</h1>
+            <h3>Params:</h3>
+            <h4>intercept: {{params['intercept']}}</h4>
+            {% for coef, value in params['coef'].items() %}
+            <p>{{ coef }}: {{value}}</p>
+            {% endfor %}
+            <h3>Scores:</h3>
+            {% for score in scores %}
+            <p>{{ score['param_value'] }}: {{score['mean_mse']}}</p>
+            {% endfor %}
             <form action="/model/{{model_id}}/predict" method="post">
                 <textarea id="message" name="json" rows="8" class="tm-input" required>
 {"data": "c,b\n0.0,2.0\n0.0,2.0"}

@@ -10,3 +10,4 @@
 |4|[тетрадка](/HW4/hw4_Polyanskaya.ipynb)|
 |5|[папка](/HW5)|
 |6|[папка](/HW6)|
+|7|[тетрадка](/HW7/hw7_Polyanskaya.ipynb)|
